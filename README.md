@@ -12,9 +12,11 @@ This project is still under development, and we welcome contributions and feedba
 
 To get started with this project, clone the repository and install the necessary dependencies:
 
-git clone https://github.com/your-username/superblocks-budapest.git
-cd superblocks-budapest
-pip install -r requirements.txt
+`git clone https://github.com/your-username/superblocks-budapest.git`
+
+`cd superblocks-budapest`
+
+`pip install -r requirements.txt`
 
 
 Once the dependencies are installed, you can begin exploring the data and implementing your own analyses.
