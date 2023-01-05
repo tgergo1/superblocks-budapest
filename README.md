@@ -1,4 +1,4 @@
-![Superpest](cover.png)
+![Superpest](assets/cover.png)
 
 # Superblocks for Budapest
 
