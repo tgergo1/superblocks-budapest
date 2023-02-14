@@ -23,18 +23,20 @@ edges["width"].fillna(3.5, inplace=True)
 
 lane_width = 0.75
 edges["capacity"] = (edges["width"] - 2 * lane_width) * edges["lanes"] * edges["maxspeed"] / 1000
+edges["capacity"] = edges["capacity"].round(1)
 
 # Create a sorted list of all unique capacity values
 capacity_values = edges["capacity"].sort_values(ascending=False)
 
 # Create a set of the top 10 capacity values
-most_common_capacity_values = Counter(capacity_values).most_common()[:19][0]
+most_common_capacity_keys = dict(Counter(capacity_values).most_common(10)).keys()
+most_common_capacity_values = dict(Counter(capacity_values).most_common(10)).values()
 
 # Create a new column in the edges dataframe called "color" that is initially set to black
 edges["color"] = "black"
 
 # Set the color of the edges with capacity in the top 10 to red
-edges.loc[edges["capacity"].isin(most_common_capacity_values), "color"] = "red"
+edges.loc[edges["capacity"].isin(most_common_capacity_keys), "color"] = "red"
 
 # Define the size of the figure
 figsizeside = 300
