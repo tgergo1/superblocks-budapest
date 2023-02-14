@@ -1,8 +1,11 @@
 from pyrosm import OSM
 from pyrosm import get_data
+from collections import Counter
+import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 import pandas as pd
+matplotlib.use('Agg')
 
 budapest_data = get_data("Budapest", directory="res")
 osm = OSM(budapest_data)
@@ -20,22 +23,21 @@ edges["width"].fillna(3.5, inplace=True)
 
 lane_width = 0.75
 edges["capacity"] = (edges["width"] - 2 * lane_width) * edges["lanes"] * edges["maxspeed"] / 1000
-edges["color"] = ["black"] * len(edges)
 
-# Define the color map
-cmap = colors.LinearSegmentedColormap.from_list("capacity", ["red", "green"])
+# Create a sorted list of all unique capacity values
+capacity_values = edges["capacity"].sort_values(ascending=False)
 
-# Normalize the capacity values to the range [0, 1]
-norm = colors.Normalize(vmin=edges["capacity"].min(), vmax=edges["capacity"].max())
+# Create a set of the top 10 capacity values
+most_common_capacity_values = Counter(capacity_values).most_common()[:19][0]
 
-# Map the capacity values to colors using the color map
-edges["color"] = cmap(norm(edges["capacity"]))
+# Create a new column in the edges dataframe called "color" that is initially set to black
+edges["color"] = "black"
 
-# Convert the single color values to RGBA values
-edges["color"] = [colors.to_rgba(c) for c in edges["color"]]
+# Set the color of the edges with capacity in the top 10 to red
+edges.loc[edges["capacity"].isin(most_common_capacity_values), "color"] = "red"
 
 # Define the size of the figure
-figsizeside = 200
+figsizeside = 300
 
 # Plot the road network, coloring the roads based on their capacity
 fig, ax = plt.subplots(figsize=(figsizeside,figsizeside))
