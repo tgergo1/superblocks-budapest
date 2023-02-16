@@ -46,7 +46,7 @@ This project is currently in the development phase. We welcome contributions and
 
 First screenshots of the capacity map:
 ![1](assets/1.jpg)
-![2](assets/2.hpg) 
+![2](assets/2.jpg) 
 ![3](assets/3.jpg)
 [Download the full image (as zip)](assets/budapest.zip)
 
