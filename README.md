@@ -27,9 +27,6 @@ The project will involve the following steps:
 
 3. Recommendations and conclusion: Based on the results of the data analysis and simulation, we will develop recommendations and conclusions on the feasibility and potential impacts of superblocks in Budapest. These recommendations will be presented in a report and disseminated to relevant stakeholders, including policymakers and city planners.
 
-## Status
-
-This project is currently in the development phase. We welcome contributions and feedback from the community.
 
 ## Installation
 
@@ -42,6 +39,16 @@ pip install -r requirements.txt
 ```
 
 Once the dependencies are installed, you can begin exploring the data and implementing your own analyses.
+
+## Status
+
+This project is currently in the development phase. We welcome contributions and feedback from the community.
+
+First screenshots of the capacity map:
+![1](assets/1.jpg)
+![2](assets/2.hpg) 
+![3](assets/3.jpg)
+[Download the full image (as zip)](assets/budapest.zip)
 
 ## Contributing
 
