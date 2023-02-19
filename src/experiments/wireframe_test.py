@@ -5,6 +5,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import pickle
 import os
+from tqdm import tqdm
 
 class RoadNetwork:
     def __init__(self, city_name, directory="res"):
@@ -34,7 +35,7 @@ class RoadNetwork:
         most_common_capacity_values = dict(Counter(capacity_values).most_common(top_n)).values()
         most_common_capacity_keys = sorted(most_common_capacity_keys, reverse=True)
         self.edges["color"] = "black"
-        for idx, edge in self.edges.iterrows():
+        for idx, edge in tqdm(self.edges.iterrows(), total=self.edges.shape[0], desc="Calculating capacity and colors"):
             if edge["capacity"] in most_common_capacity_keys:
                 capacity_index = most_common_capacity_keys.index(edge["capacity"])
                 red_value = 255*(capacity_index/top_n)
@@ -66,7 +67,9 @@ class RoadNetwork:
 
 
 # Initialize a RoadNetwork object for the city of Boston
-new_york = RoadNetwork("new_york")
+#new_york = RoadNetwork("new_york")
+
+new_york = RoadNetwork("budapest")
 
 # Calculate the capacity of each road segment in the network
 new_york.calculate_capacity()

@@ -5,3 +5,4 @@ numpy==1.19.4
 osmnx==0.10.4
 pandas==1.1.4
 pyrosm==0.2.1
+tqdm
