@@ -8,7 +8,7 @@ import os
 from tqdm import tqdm
 
 class RoadNetwork:
-    def __init__(self, city_name, directory="res"):
+    def __init__(self, city_name, directory="."):
         self.city_name = city_name
         self.directory = directory
         self.data = get_data(city_name, directory=directory)
@@ -24,8 +24,14 @@ class RoadNetwork:
         self.edges["lanes"].fillna(default_lanes, inplace=True)
         self.edges["maxspeed"].fillna(default_maxspeed, inplace=True)
         self.edges["width"].fillna(default_width, inplace=True)
-        self.edges["capacity"] = (self.edges["width"] - 2 * lane_width) * self.edges["lanes"] * self.edges["maxspeed"] / 1000
-        self.edges["capacity"] = self.edges["capacity"].round(1)
+        #self.edges["capacity"] = (self.edges["width"] - 2 * lane_width) * self.edges["lanes"] * self.edges["maxspeed"] / 1000
+        #self.edges["capacity"] = self.edges["capacity"].round(1)
+
+        # Use tqdm to add a progress bar to the loop over edges
+        self.edges["capacity"] = [0.0] * len(self.edges)
+        for i, edge in tqdm(self.edges.iterrows(), total=len(self.edges), desc="Calculating capacities"):
+            capacity = (edge["width"] - 2 * lane_width) * edge["lanes"] * edge["maxspeed"] / 1000
+            self.edges.at[i, "capacity"] = round(capacity, 1)
         
     def color_by_capacity(self, top_n=10):
         if self.edges is None:
@@ -35,21 +41,22 @@ class RoadNetwork:
         most_common_capacity_values = dict(Counter(capacity_values).most_common(top_n)).values()
         most_common_capacity_keys = sorted(most_common_capacity_keys, reverse=True)
         self.edges["color"] = "black"
-        for idx, edge in tqdm(self.edges.iterrows(), total=self.edges.shape[0], desc="Calculating capacity and colors"):
+        for idx, edge in tqdm(self.edges.iterrows(), total=self.edges.shape[0], desc="Calculating colors"):
             if edge["capacity"] in most_common_capacity_keys:
                 capacity_index = most_common_capacity_keys.index(edge["capacity"])
                 red_value = 255*(capacity_index/top_n)
                 green_value = 255-red_value
                 self.edges.at[idx, "color"] = '#{:02X}{:02X}{:02X}'.format(round(red_value),round(green_value),0)
     
-    def plot(self, size=(10,10), edge_color='color', save=True, ext = "png", **kwargs):
+    def plot(self, size=(30, 30), edge_color='color', save=True, ext="png", dpi=2000, **kwargs):
+        print("Plotting the road network...")
         if self.edges is None:
             self.color_by_capacity()
         fig, ax = plt.subplots(figsize=size)
         self.edges.plot(ax=ax, color=self.edges[edge_color], **kwargs)
         if save:
             filename = str(self.city_name) + "." + str(ext)
-            fig.savefig(filename, format=ext)
+            fig.savefig(filename, format=ext, dpi=dpi)
         else:
             plt.show()
 
@@ -69,7 +76,7 @@ class RoadNetwork:
 # Initialize a RoadNetwork object for the city of Boston
 #new_york = RoadNetwork("new_york")
 
-new_york = RoadNetwork("new_york")
+new_york = RoadNetwork("budapest","../../res")
 
 # Calculate the capacity of each road segment in the network
 new_york.calculate_capacity()
@@ -77,7 +84,7 @@ new_york.calculate_capacity()
 # Color the road segments by their capacity and plot the network
 new_york.color_by_capacity()
 
-new_york.serialize()
+#new_york.serialize()
 
 #new_york.deserialize()
 
@@ -85,4 +92,4 @@ new_york.serialize()
 #    colors = pickle.load(f)
 #    new_york.edges["color"] = colors
 
-new_york.plot(size=(300,300), edge_color="color")
+new_york.plot(size=(30,30), edge_color="color", save=True)
