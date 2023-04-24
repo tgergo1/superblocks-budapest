@@ -6,6 +6,12 @@ import matplotlib.pyplot as plt
 import pickle
 import os
 from tqdm import tqdm
+import io
+from PIL import Image
+import numpy as np
+from mpl_toolkits.basemap import Basemap
+
+
 
 class RoadNetwork:
     def __init__(self, city_name, directory="."):
@@ -48,17 +54,42 @@ class RoadNetwork:
                 green_value = 255-red_value
                 self.edges.at[idx, "color"] = '#{:02X}{:02X}{:02X}'.format(round(red_value),round(green_value),0)
     
-    def plot(self, size=(30, 30), edge_color='color', save=True, ext="png", dpi=2000, **kwargs):
+    def plot(self, size=(10, 10), edge_color='color', save=True, ext="png", dpi=100, num_tiles=1, linewidth=0.5, **kwargs):
         print("Plotting the road network...")
         if self.edges is None:
             self.color_by_capacity()
-        fig, ax = plt.subplots(figsize=size)
-        self.edges.plot(ax=ax, color=self.edges[edge_color], **kwargs)
+
+        fig, ax = plt.subplots(figsize=size, dpi=dpi)
+
+        x_min, y_min, x_max, y_max = self.edges.total_bounds
+        m = Basemap(
+            projection='merc',
+            llcrnrlat=y_min,
+            urcrnrlat=y_max,
+            llcrnrlon=x_min,
+            urcrnrlon=x_max,
+            resolution='i',  # or 'i' for intermediate resolution
+            ax=ax
+        )
+
+        for idx, row in self.edges.iterrows():
+            if row['geometry'].geom_type == 'LineString':
+                x_coords, y_coords = np.array(row['geometry'].coords).T
+                m.plot(x_coords, y_coords, '-', color=row['color'], latlon=True, ax=ax, linewidth=linewidth)
+            elif row['geometry'].geom_type == 'MultiLineString':
+                for line_string in row['geometry'].geoms:
+                    x_coords, y_coords = np.array(line_string.coords).T
+                    m.plot(x_coords, y_coords, '-', color=row['color'], latlon=True, ax=ax, linewidth=linewidth)
+
+        plt.axis('off')
+
         if save:
             filename = str(self.city_name) + "." + str(ext)
-            fig.savefig(filename, format=ext, dpi=dpi)
+            plt.savefig(filename, format=ext, dpi=dpi, bbox_inches='tight', pad_inches=0)
         else:
             plt.show()
+
+
 
     def serialize(self):
         with open(self.city_name+".save", "wb") as f:
@@ -76,7 +107,7 @@ class RoadNetwork:
 # Initialize a RoadNetwork object for the city of Boston
 #new_york = RoadNetwork("new_york")
 
-new_york = RoadNetwork("budapest","../../res")
+new_york = RoadNetwork("new_york","../../res")
 
 # Calculate the capacity of each road segment in the network
 new_york.calculate_capacity()
@@ -91,5 +122,6 @@ new_york.color_by_capacity()
 #with open("new_york_colors.pickle", "rb") as f:
 #    colors = pickle.load(f)
 #    new_york.edges["color"] = colors
+new_york.plot(size=(20, 20), edge_color="color", save=True, dpi=300, num_tiles=4, linewidth=0.1, ext="svg")
 
-new_york.plot(size=(30,30), edge_color="color", save=True)
+
