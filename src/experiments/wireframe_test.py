@@ -105,15 +105,15 @@ class RoadNetwork:
 
 
 # Initialize a RoadNetwork object for the city of Boston
-#new_york = RoadNetwork("new_york")
+budapest = RoadNetwork("budapest")
 
-new_york = RoadNetwork("new_york","../../res")
+#new_york = RoadNetwork("new_york","../../res")
 
 # Calculate the capacity of each road segment in the network
-new_york.calculate_capacity()
+budapest.calculate_capacity()
 
 # Color the road segments by their capacity and plot the network
-new_york.color_by_capacity()
+budapest.color_by_capacity()
 
 #new_york.serialize()
 
@@ -122,6 +122,6 @@ new_york.color_by_capacity()
 #with open("new_york_colors.pickle", "rb") as f:
 #    colors = pickle.load(f)
 #    new_york.edges["color"] = colors
-new_york.plot(size=(20, 20), edge_color="color", save=True, dpi=300, num_tiles=4, linewidth=0.1, ext="svg")
+budapest.plot(size=(20, 20), edge_color="color", save=True, dpi=300, num_tiles=4, linewidth=0.1, ext="svg")
 
 

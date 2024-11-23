@@ -1,5 +1,15 @@
 *.pbf
 *.png
-!assets/cover.png
 *.svg
 *.save
+*.geojson
+src/experiments/*.html
+src/__pycache__/
+src/experiments/cache/
+src/experiments/cache/*
+src/venv/
+src/venv/*
+src/outputs/
+src/outputs/*
+src/cache/
+src/cache/*
