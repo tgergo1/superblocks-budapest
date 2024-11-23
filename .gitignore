@@ -1,5 +1,7 @@
 *.pbf
 *.png
+!assets/cover.png
+!assets/new_block.png
 *.svg
 *.save
 *.geojson
