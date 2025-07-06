@@ -298,6 +298,35 @@ class RoadNetwork:
         )
         logging.info(f"Generated {len(self.superblocks)} clustered superblocks.")
 
+    def modularity_superblocks(self, capacity_quantile=0.75, resolution=1.0, alpha=1.5):
+        """Identify superblocks using community detection based on modularity.
+
+        This method mirrors :meth:`cluster_superblocks` but relies on
+        :func:`superblock_algorithms.compute_superblocks_by_modularity`.
+
+        Parameters
+        ----------
+        capacity_quantile : float, optional
+            Quantile for selecting high-capacity edges, by default ``0.75``.
+        resolution : float, optional
+            Resolution parameter for modularity optimisation, by default ``1.0``.
+        alpha : float, optional
+            Alpha parameter for the alphashape algorithm, by default ``1.5``.
+        """
+        from superblock_algorithms import compute_superblocks_by_modularity
+
+        if self.boundary_streets is None:
+            raise ValueError("Streets must be classified before community detection.")
+
+        logging.info("Detecting superblocks via modularity-based communities...")
+        self.superblocks = compute_superblocks_by_modularity(
+            self.boundary_streets,
+            capacity_quantile=capacity_quantile,
+            resolution=resolution,
+            alpha=alpha,
+        )
+        logging.info(f"Generated {len(self.superblocks)} modularity superblocks.")
+
     def assign_unassigned_blocks(self, unassigned):
         """
         Assigns blocks not within any superblock to the nearest superblock.
