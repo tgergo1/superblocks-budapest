@@ -110,7 +110,7 @@ class RoadNetwork:
 
     def buffer_streets(self, gdf, buffer_distance=0.0001):
         """
-        Buffers streets to ensure proper intersection for polygonization.
+        Buffers streets to ensure proper intersections for polygonization.
         
         Parameters:
         - gdf (GeoDataFrame): GeoDataFrame of streets.
