@@ -3,6 +3,12 @@ sys.path.append('src')
 
 import geopandas as gpd
 from shapely.geometry import LineString
+import types
+import sys
+
+ox_stub = types.ModuleType("osmnx")
+sys.modules.setdefault("osmnx", ox_stub)
+
 from road_network import RoadNetwork
 
 

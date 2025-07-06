@@ -73,9 +73,10 @@ class RoadNetwork:
         dpi : int, optional
             Resolution of the plot in dots per inch. Defaults to ``100``.
         num_tiles : int, optional
-            Number of tiles into which the map should be split to allow
-            higher-resolution exports. This parameter is currently unused but
-            reserved for future functionality. Defaults to ``1``.
+            Number of tiles used to split the map for higher resolution
+            exports. When greater than ``1`` the map is rendered on a grid
+            of tiles which are stitched together into a single image.
+            Defaults to ``1``.
         linewidth : float, optional
             Width of the plotted road lines. Defaults to ``0.5``.
         **kwargs
@@ -87,33 +88,76 @@ class RoadNetwork:
         if self.edges is None:
             self.color_by_capacity()
 
-        fig, ax = plt.subplots(figsize=size, dpi=dpi)
-
         x_min, y_min, x_max, y_max = self.edges.total_bounds
-        m = Basemap(
-            projection='merc',
-            llcrnrlat=y_min,
-            urcrnrlat=y_max,
-            llcrnrlon=x_min,
-            urcrnrlon=x_max,
-            resolution='i',  # or 'i' for intermediate resolution
-            ax=ax
-        )
+        width = x_max - x_min
+        height = y_max - y_min
 
-        for idx, row in self.edges.iterrows():
-            if row['geometry'].geom_type == 'LineString':
-                x_coords, y_coords = np.array(row['geometry'].coords).T
-                m.plot(x_coords, y_coords, '-', color=row['color'], latlon=True, ax=ax, linewidth=linewidth)
-            elif row['geometry'].geom_type == 'MultiLineString':
-                for line_string in row['geometry'].geoms:
-                    x_coords, y_coords = np.array(line_string.coords).T
-                    m.plot(x_coords, y_coords, '-', color=row['color'], latlon=True, ax=ax, linewidth=linewidth)
+        if num_tiles <= 1:
+            fig, axes = plt.subplots(figsize=size, dpi=dpi)
+            axes = [axes]
+            tile_bounds = [
+                (x_min, x_max, y_min, y_max, axes[0])
+            ]
+        else:
+            fig, axes = plt.subplots(
+                num_tiles,
+                num_tiles,
+                figsize=(size[0] * num_tiles, size[1] * num_tiles),
+                dpi=dpi,
+            )
+            tile_bounds = []
+            for j in range(num_tiles):
+                for i in range(num_tiles):
+                    llx = x_min + i * width / num_tiles
+                    urx = x_min + (i + 1) * width / num_tiles
+                    lly = y_min + j * height / num_tiles
+                    ury = y_min + (j + 1) * height / num_tiles
+                    ax = axes[j][i]
+                    tile_bounds.append((llx, urx, lly, ury, ax))
 
-        plt.axis('off')
+        for llx, urx, lly, ury, ax in tile_bounds:
+            m = Basemap(
+                projection="merc",
+                llcrnrlat=lly,
+                urcrnrlat=ury,
+                llcrnrlon=llx,
+                urcrnrlon=urx,
+                resolution="i",
+                ax=ax,
+            )
+
+            for _, row in self.edges.iterrows():
+                geom = row["geometry"]
+                if geom.geom_type == "LineString":
+                    x_coords, y_coords = np.array(geom.coords).T
+                    m.plot(
+                        x_coords,
+                        y_coords,
+                        "-",
+                        color=row[edge_color],
+                        latlon=True,
+                        ax=ax,
+                        linewidth=linewidth,
+                    )
+                elif geom.geom_type == "MultiLineString":
+                    for line_string in geom.geoms:
+                        x_coords, y_coords = np.array(line_string.coords).T
+                        m.plot(
+                            x_coords,
+                            y_coords,
+                            "-",
+                            color=row[edge_color],
+                            latlon=True,
+                            ax=ax,
+                            linewidth=linewidth,
+                        )
+            ax.axis("off")
+
+        plt.subplots_adjust(wspace=0, hspace=0)
 
         if save:
             filename = str(self.city_name) + "." + str(ext)
-            plt.savefig(filename, format=ext, dpi=dpi, bbox_inches='tight', pad_inches=0)
+            plt.savefig(filename, format=ext, dpi=dpi, bbox_inches="tight", pad_inches=0)
         else:
             plt.show()
 

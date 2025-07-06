@@ -53,6 +53,8 @@ The project involves the following steps:
 
 5. **Community Detection Approach**:
    - The project now includes a modularity-based method that clusters intersections of high-capacity streets using community detection. This generates concave-hull superblock polygons for improved adaptability.
+6. **High-Resolution Map Tiling**:
+   - Large maps can be exported by setting the `num_tiles` parameter in `wireframe_test.py`. The map is rendered across a grid of tiles and stitched into a single high-detail image.
 
 ## Updated Visualization
 

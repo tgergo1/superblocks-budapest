@@ -149,7 +149,10 @@ def compute_superblocks_by_modularity(
         points = [Point(node) for node in community]
         if len(points) < 3:
             continue
-        poly = alphashape.alphashape(points, alpha)
+        coords = [(p.x, p.y) for p in points]
+        poly = alphashape.alphashape(coords, alpha)
+        if poly.is_empty:
+            poly = gpd.GeoSeries(points).unary_union.convex_hull
         if not poly.is_empty:
             polygons.append(poly)
 
