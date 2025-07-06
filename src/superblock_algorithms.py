@@ -2,7 +2,6 @@ import logging
 import numpy as np
 import geopandas as gpd
 from shapely.geometry import Point
-import hdbscan
 import alphashape
 
 
@@ -63,6 +62,7 @@ def compute_superblocks_by_clustering(
 
     coords = np.array([(p.x, p.y) for p in points])
     logging.info("Clustering nodes with HDBSCAN...")
+    import hdbscan
     clusterer = hdbscan.HDBSCAN(min_cluster_size=min_cluster_size)
     labels = clusterer.fit_predict(coords)
 
