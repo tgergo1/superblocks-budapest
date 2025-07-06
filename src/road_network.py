@@ -6,7 +6,11 @@ import osmnx as ox
 import networkx as nx
 import geopandas as gpd
 from shapely.geometry import Polygon, MultiPolygon
-from shapely.ops import cascaded_union, polygonize
+from shapely.ops import polygonize
+try:
+    from shapely.ops import cascaded_union  # Shapely <2.0
+except ImportError:  # Shapely >=2.0
+    from shapely.ops import unary_union as cascaded_union
 import folium
 from branca.colormap import linear
 import numpy as np
@@ -245,17 +249,22 @@ class RoadNetwork:
         self.blocks = sjoin(self.blocks, self.superblocks, how='left', predicate='within')
         logging.info("Performed spatial join to assign blocks to superblocks.")
 
+        # Initialize superblock_id from spatial join results
+        self.blocks['superblock_id'] = self.blocks['index_right']
+
         # Handle blocks not within any superblock
         unassigned = self.blocks[self.blocks['index_right'].isnull()]
         if not unassigned.empty:
             logging.warning(f"{len(unassigned)} blocks were not assigned to any superblock.")
             # Assign to nearest superblock
             self.assign_unassigned_blocks(unassigned)
+            # Update superblock_id for the rows that were previously unassigned
+            self.blocks.loc[unassigned.index, 'superblock_id'] = self.blocks.loc[unassigned.index, 'index_right']
         else:
             logging.info("All blocks assigned to superblocks.")
 
-        # Add superblock_id to blocks
-        self.blocks['superblock_id'] = self.blocks['index_right'].fillna(0).astype(int)
+        # Finalize superblock_id and drop the join column
+        self.blocks['superblock_id'] = self.blocks['superblock_id'].fillna(0).astype(int)
         self.blocks = self.blocks.drop(columns=['index_right'])
 
         logging.info(f"Assigned blocks to superblocks. Total assigned blocks: {len(self.blocks)}")
