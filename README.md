@@ -51,6 +51,9 @@ The project involves the following steps:
 4. **Interactive Outputs**:
    - GeoJSON files and interactive maps were created to visualize the results and validate the identified superblocks.
 
+5. **Community Detection Approach**:
+   - The project now includes a modularity-based method that clusters intersections of high-capacity streets using community detection. This generates concave-hull superblock polygons for improved adaptability.
+
 ## Updated Visualization
 
 The new image illustrates the identified superblocks in Budapest, highlighting their boundaries and internal road structures:
