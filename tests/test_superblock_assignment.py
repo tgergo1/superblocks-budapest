@@ -6,8 +6,10 @@ from shapely.geometry import LineString, Polygon
 import types
 import sys
 
-ox_stub = types.ModuleType("osmnx")
-sys.modules.setdefault("osmnx", ox_stub)
+from unittest.mock import MagicMock
+pyrosm_mock = MagicMock()
+sys.modules.setdefault("pyrosm", pyrosm_mock)
+pyrosm_mock.OSM = MagicMock()
 
 from road_network import RoadNetwork
 
