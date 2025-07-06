@@ -265,18 +265,21 @@ class RoadNetwork:
         Assigns blocks not within any superblock to the nearest superblock.
         """
         logging.info("Assigning unassigned blocks to the nearest superblock...")
-        from shapely.ops import nearest_points
 
         for idx, block in unassigned.iterrows():
             # Compute distance to all superblocks
             distances = self.superblocks['geometry'].distance(block.geometry)
             nearest_superblock = distances.idxmin()
-            self.blocks.at[idx, 'superblock_id'] = nearest_superblock
-            logging.info(f"Assigned block {idx} to superblock {nearest_superblock}.")
+            # Store the nearest superblock index in the spatial join column
+            # so the subsequent assignment step can use it consistently
+            self.blocks.at[idx, 'index_right'] = nearest_superblock
+            logging.info(
+                f"Assigned block {idx} to superblock {nearest_superblock}."
+            )
 
-        # Drop remaining unassigned blocks if any
-        self.blocks = self.blocks.dropna(subset=['superblock_id'])
-        logging.info(f"Total blocks after assignment: {len(self.blocks)}")
+        # No rows should be dropped here; dropping would remove already
+        # correctly assigned blocks. Any blocks that still lack an assignment
+        # will later be given a default value when 'superblock_id' is created.
 
     def visualize_superblocks(self, output_file='superblocks.html'):
         """
