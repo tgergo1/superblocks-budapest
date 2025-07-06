@@ -34,14 +34,11 @@ sys.modules.pop("matplotlib.pyplot", None)
 sys.modules["matplotlib"] = importlib.import_module("matplotlib")
 sys.modules["matplotlib.pyplot"] = importlib.import_module("matplotlib.pyplot")
 
-import pathlib
-source = pathlib.Path("src/experiments/wireframe_test.py").read_text()
-source = source.split("budapest =", 1)[0]
-module = types.ModuleType("wireframe_test")
-exec(source, module.__dict__)
-RoadNetwork = module.RoadNetwork
+import importlib
+import inspect
 
-
+wireframe_test = importlib.import_module("experiments.wireframe_test")
+RoadNetwork = wireframe_test.RoadNetwork
 def test_num_tiles_creates_image(tmp_path):
     rn = RoadNetwork("tile_test")
     rn.edges = gpd.GeoDataFrame(
