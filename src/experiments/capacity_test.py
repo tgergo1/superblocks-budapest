@@ -1,5 +1,9 @@
-from pyrosm import OSM, get_data
-from collections import Counter
+try:
+    from pyrosm import OSM, get_data
+except Exception:  # pragma: no cover - dependency not installed during tests
+    OSM = None
+    get_data = None
+
 import pandas as pd
 import matplotlib.pyplot as plt
 import pickle
@@ -7,16 +11,66 @@ import os
 import numpy as np
 import matplotlib
 import networkx as nx
-import osmnx as ox
-import momepy
+try:
+    import osmnx as ox
+except Exception:  # pragma: no cover - dependency not installed during tests
+    ox = None
+try:
+    import momepy
+except Exception:  # pragma: no cover
+    momepy = None
 import geopandas as gpd
 from shapely.geometry import Polygon
 import warnings
+
 warnings.filterwarnings("ignore")  # Suppress warnings for cleaner output
-matplotlib.use('Agg')  # Use non-interactive backend
+matplotlib.use("Agg")  # Use non-interactive backend
+
+
+def calculate_capacity(edges: gpd.GeoDataFrame,
+                       lane_width: float = 3.5,
+                       default_lanes: int = 2,
+                       default_maxspeed: int = 50) -> gpd.GeoDataFrame:
+    """Populate a capacity column in the given edges GeoDataFrame."""
+    for col in ["lanes", "maxspeed", "width"]:
+        if col not in edges.columns:
+            edges[col] = None
+
+    edges["lanes"] = pd.to_numeric(edges["lanes"], errors="coerce").fillna(default_lanes)
+    edges["maxspeed"] = pd.to_numeric(edges["maxspeed"], errors="coerce").fillna(default_maxspeed)
+    edges["width"] = pd.to_numeric(edges["width"], errors="coerce")
+    edges["width"].fillna(edges["lanes"] * lane_width, inplace=True)
+
+    edges["capacity"] = (edges["width"] * edges["maxspeed"] / 1000).round(1)
+    return edges
+
+
+def identify_superblocks(edges: gpd.GeoDataFrame,
+                         nodes: gpd.GeoDataFrame,
+                         percentile: float = 0.90) -> gpd.GeoDataFrame:
+    """Return polygons representing superblocks from the network."""
+    if ox is None or momepy is None:
+        raise ImportError("osmnx and momepy are required for identify_superblocks")
+    capacity_threshold = edges["capacity"].quantile(percentile)
+    high_capacity_edges = edges[edges["capacity"] >= capacity_threshold]
+    if high_capacity_edges.empty:
+        raise ValueError("No edges meet the capacity threshold. Please adjust the percentile.")
+
+    nodes = nodes.set_index("id").copy()
+    nodes["x"] = nodes.geometry.x
+    nodes["y"] = nodes.geometry.y
+
+    G = ox.graph_from_gdfs(nodes, high_capacity_edges, graph_attrs=None).to_undirected()
+    edges_gdf = ox.graph_to_gdfs(G, nodes=False, edges=True, node_geometry=False, fill_edge_geometry=True)
+    edges_gdf = edges_gdf[["geometry"]].drop_duplicates().reset_index(drop=True)
+    blocks = momepy.Blocks(edges_gdf)
+    return blocks.blocks
 
 class RoadNetwork:
     def __init__(self, city_name, directory="."):
+        if get_data is None or OSM is None:
+            raise ImportError("pyrosm is required for RoadNetwork")
+
         self.city_name = city_name
         self.directory = directory
         self.data = get_data(city_name, directory=directory)
@@ -27,27 +81,18 @@ class RoadNetwork:
 
     def calculate_capacity(self, lane_width=3.5, default_lanes=2, default_maxspeed=50):
         if self.edges is None or self.nodes is None:
-            # Retrieve both edges and nodes, including extra attributes
             self.edges, self.nodes = self.osm.get_network(
                 network_type="driving",
                 nodes=True,
-                extra_attributes=["lanes", "maxspeed", "width"]
+                extra_attributes=["lanes", "maxspeed", "width"],
             )
-        # Ensure the necessary columns are present
-        for col in ["lanes", "maxspeed", "width"]:
-            if col not in self.edges.columns:
-                self.edges[col] = None  # Add the column if it doesn't exist
 
-        # Convert to numeric and handle missing values
-        self.edges["lanes"] = pd.to_numeric(self.edges["lanes"], errors="coerce").fillna(default_lanes)
-        self.edges["maxspeed"] = pd.to_numeric(self.edges["maxspeed"], errors="coerce").fillna(default_maxspeed)
-        # Use default lane width if 'width' is not available
-        self.edges["width"] = pd.to_numeric(self.edges["width"], errors="coerce")
-        self.edges["width"].fillna(self.edges["lanes"] * lane_width, inplace=True)
-
-        # Calculate capacity
-        self.edges["capacity"] = self.edges["width"] * self.edges["maxspeed"] / 1000  # Simplified capacity formula
-        self.edges["capacity"] = self.edges["capacity"].round(1)
+        self.edges = calculate_capacity(
+            self.edges,
+            lane_width=lane_width,
+            default_lanes=default_lanes,
+            default_maxspeed=default_maxspeed,
+        )
 
     def color_by_capacity(self, top_n=10):
         if self.edges is None:
@@ -92,38 +137,10 @@ class RoadNetwork:
         if self.edges is None or self.nodes is None:
             self.calculate_capacity()
 
-        # Calculate capacity threshold based on the specified percentile
-        capacity_threshold = self.edges['capacity'].quantile(percentile)
-        print(f"Using capacity threshold at the {percentile * 100}% percentile: {capacity_threshold}")
-
-        # Filter edges to only include high-capacity roads
-        high_capacity_edges = self.edges[self.edges['capacity'] >= capacity_threshold]
-
-        if high_capacity_edges.empty:
-            raise ValueError("No edges meet the capacity threshold. Please adjust the percentile.")
-
-        # Prepare nodes GeoDataFrame
-        nodes = self.nodes.copy()
-        nodes = nodes.set_index('id')
-
-        # Extract 'x' and 'y' from geometry
-        nodes['x'] = nodes.geometry.x
-        nodes['y'] = nodes.geometry.y
-
-        # Create the graph
-        G = ox.graph_from_gdfs(nodes, high_capacity_edges, graph_attrs=None)
-        G_un = G.to_undirected()
-
-        # Convert graph to GeoDataFrame
-        edges_gdf = ox.graph_to_gdfs(G_un, nodes=False, edges=True, node_geometry=False, fill_edge_geometry=True)
-
-        # Simplify the edges to reduce complexity
-        edges_gdf = edges_gdf[['geometry']].drop_duplicates().reset_index(drop=True)
-
-        # Extract blocks (faces) using momepy
         try:
-            blocks = momepy.Blocks(edges_gdf)
-            self.superblocks = blocks.blocks
+            self.superblocks = identify_superblocks(
+                self.edges, self.nodes, percentile=percentile
+            )
             print("Superblocks identified successfully.")
         except Exception as e:
             print(f"An error occurred while identifying superblocks: {e}")
