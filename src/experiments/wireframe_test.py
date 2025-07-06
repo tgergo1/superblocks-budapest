@@ -176,24 +176,23 @@ class RoadNetwork:
             raise ValueError("The file does not exist.")
 
 
-# Initialize a RoadNetwork object for the city of Boston
-budapest = RoadNetwork("budapest")
+if __name__ == "__main__":
+    # Initialize a RoadNetwork object for the city of Budapest
+    budapest = RoadNetwork("budapest")
 
-#new_york = RoadNetwork("new_york","../../res")
+    # Example usage for generating a high-resolution map
+    budapest.calculate_capacity()
+    budapest.color_by_capacity()
 
-# Calculate the capacity of each road segment in the network
-budapest.calculate_capacity()
-
-# Color the road segments by their capacity and plot the network
-budapest.color_by_capacity()
-
-#new_york.serialize()
-
-#new_york.deserialize()
-
-#with open("new_york_colors.pickle", "rb") as f:
-#    colors = pickle.load(f)
-#    new_york.edges["color"] = colors
-budapest.plot(size=(20, 20), edge_color="color", save=True, dpi=300, num_tiles=4, linewidth=0.1, ext="svg")
+    # Export the map split across tiles and stitched together
+    budapest.plot(
+        size=(20, 20),
+        edge_color="color",
+        save=True,
+        dpi=300,
+        num_tiles=4,
+        linewidth=0.1,
+        ext="svg",
+    )
 
 
