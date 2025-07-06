@@ -260,6 +260,35 @@ class RoadNetwork:
 
         logging.info(f"Assigned blocks to superblocks. Total assigned blocks: {len(self.blocks)}")
 
+    def cluster_superblocks(self, capacity_quantile=0.75, min_cluster_size=5, alpha=1.5):
+        """Identify superblocks using clustering of high-capacity edge nodes.
+
+        This method is an alternative to :meth:`assign_blocks_to_superblocks` and
+        relies on :func:`superblock_algorithms.compute_superblocks_by_clustering`.
+
+        Parameters
+        ----------
+        capacity_quantile : float, optional
+            Quantile for selecting high-capacity edges, by default 0.75.
+        min_cluster_size : int, optional
+            Minimum cluster size for HDBSCAN, by default 5.
+        alpha : float, optional
+            Alpha parameter for the alphashape algorithm, by default 1.5.
+        """
+        from .superblock_algorithms import compute_superblocks_by_clustering
+
+        if self.boundary_streets is None:
+            raise ValueError("Streets must be classified before clustering.")
+
+        logging.info("Clustering high-capacity streets to generate superblocks...")
+        self.superblocks = compute_superblocks_by_clustering(
+            self.boundary_streets,
+            capacity_quantile=capacity_quantile,
+            min_cluster_size=min_cluster_size,
+            alpha=alpha,
+        )
+        logging.info(f"Generated {len(self.superblocks)} clustered superblocks.")
+
     def assign_unassigned_blocks(self, unassigned):
         """
         Assigns blocks not within any superblock to the nearest superblock.
