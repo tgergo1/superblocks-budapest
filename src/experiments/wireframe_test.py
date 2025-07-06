@@ -55,6 +55,34 @@ class RoadNetwork:
                 self.edges.at[idx, "color"] = '#{:02X}{:02X}{:02X}'.format(round(red_value),round(green_value),0)
     
     def plot(self, size=(10, 10), edge_color='color', save=True, ext="png", dpi=100, num_tiles=1, linewidth=0.5, **kwargs):
+        """Plot the road network colored by capacity.
+
+        Parameters
+        ----------
+        size : tuple of int, optional
+            Figure size ``(width, height)`` in inches. Defaults to ``(10, 10)``.
+        edge_color : str, optional
+            Column name or color value used to draw the road segments. By
+            default the ``"color"`` column produced by :meth:`color_by_capacity`
+            is used.
+        save : bool, optional
+            If ``True`` the figure is written to disk, otherwise it is shown
+            interactively. Defaults to ``True``.
+        ext : str, optional
+            File extension for the saved figure. Defaults to ``"png"``.
+        dpi : int, optional
+            Resolution of the plot in dots per inch. Defaults to ``100``.
+        num_tiles : int, optional
+            Number of tiles into which the map should be split to allow
+            higher-resolution exports. This parameter is currently unused but
+            reserved for future functionality. Defaults to ``1``.
+        linewidth : float, optional
+            Width of the plotted road lines. Defaults to ``0.5``.
+        **kwargs
+            Additional keyword arguments passed to ``matplotlib`` plotting
+            functions.
+        """
+
         print("Plotting the road network...")
         if self.edges is None:
             self.color_by_capacity()
