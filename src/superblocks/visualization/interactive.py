@@ -11,6 +11,8 @@ import geopandas as gpd
 import pandas as pd
 import folium
 from branca.colormap import LinearColormap
+from folium.plugins import Fullscreen, MeasureControl, MiniMap, MousePosition, PolyLineTextPath
+from shapely.geometry import LineString, MultiLineString
 
 from ..config import PipelineConfig
 
@@ -57,6 +59,56 @@ def _add_linestrings_to_map(
             tooltip=tooltip,
             style_function=lambda *_args, **_kwargs: style_kwargs,
         ).add_to(feature_group)
+
+
+def _iter_lines(geometry) -> Iterable[list[tuple[float, float]]]:
+    if geometry is None or geometry.is_empty:
+        return []
+    if isinstance(geometry, LineString):
+        return [list(geometry.coords)]
+    if isinstance(geometry, MultiLineString):
+        return [list(line.coords) for line in geometry.geoms]
+    return []
+
+
+def _add_directional_layer(
+    folium_map: folium.Map,
+    gdf: gpd.GeoDataFrame | None,
+    name: str,
+    color: str,
+    show: bool = False,
+) -> None:
+    if gdf is None or gdf.empty:
+        return
+
+    group = folium.FeatureGroup(name=name, show=show)
+    lowercase_true = {"yes", "true", "1", "y"}
+
+    for _, row in gdf.iterrows():
+        for coords in _iter_lines(row.geometry):
+            if len(coords) < 2:
+                continue
+            polyline = folium.PolyLine(coords, color=color, weight=2.0, opacity=0.65)
+            polyline.add_to(group)
+
+            oneway_value = row.get("oneway")
+            if isinstance(oneway_value, str):
+                oneway_value = oneway_value.lower()
+            arrow = " > " if oneway_value in lowercase_true or oneway_value is True else " <> "
+
+            PolyLineTextPath(
+                polyline,
+                arrow,
+                repeat=True,
+                offset=8,
+                attributes={
+                    "fill": color,
+                    "font-weight": "bold",
+                    "font-size": "12",
+                },
+            ).add_to(group)
+
+    group.add_to(folium_map)
 
 
 
@@ -165,6 +217,10 @@ def render_superblocks_map(
     output_path: str | Path,
     centre: Tuple[float, float] | None = None,
     blocks: gpd.GeoDataFrame | None = None,
+    major_roads: gpd.GeoDataFrame | None = None,
+    heritage_priority: gpd.GeoDataFrame | None = None,
+    heritage_zone: gpd.GeoDataFrame | None = None,
+    street_directions: gpd.GeoDataFrame | None = None,
 ) -> Path:
     if superblocks.empty:
         raise ValueError("Cannot render superblock map without superblock polygons")
@@ -175,6 +231,38 @@ def render_superblocks_map(
         raise ValueError("Cannot determine map centre; supply `centre` explicitly")
 
     folium_map = folium.Map(location=centre, zoom_start=config.folium_zoom_start, tiles=config.folium_tiles)
+    folium.TileLayer(
+        "cartodbdark_matter",
+        name="Dark Matter",
+        attr="© OpenStreetMap contributors © CARTO",
+    ).add_to(folium_map)
+    folium.TileLayer(
+        "Stamen Terrain",
+        name="Terrain",
+        attr="Map tiles by Stamen Design, CC BY 3.0 — Map data © OpenStreetMap contributors",
+    ).add_to(folium_map)
+    Fullscreen(position="topleft").add_to(folium_map)
+    MiniMap(toggle_display=True, minimized=True).add_to(folium_map)
+    MeasureControl(primary_length_unit="meters", secondary_length_unit="miles").add_to(folium_map)
+    MousePosition(
+        position="bottomright",
+        separator=" | ",
+        empty_string="Out of bounds",
+        lng_first=True,
+        num_digits=5,
+    ).add_to(folium_map)
+
+    if heritage_zone is not None and not heritage_zone.empty:
+        folium.GeoJson(
+            heritage_zone,
+            name="Heritage Core",
+            style_function=lambda *_args, **_kwargs: {
+                "fillColor": "#ffe066",
+                "color": "#f08c00",
+                "weight": 1.5,
+                "fillOpacity": 0.15,
+            },
+        ).add_to(folium_map)
 
     if blocks is not None and not blocks.empty:
         folium.GeoJson(
@@ -189,6 +277,37 @@ def render_superblocks_map(
             tooltip=folium.GeoJsonTooltip(fields=["block_id", "superblock_id"], aliases=["Block", "Superblock"]),
             show=False,
         ).add_to(folium_map)
+
+    if major_roads is not None and not major_roads.empty:
+        major_group = folium.FeatureGroup(name="Major Corridors", show=True)
+        _add_linestrings_to_map(
+            major_group,
+            major_roads,
+            color_func=lambda _row: "#fa5252",
+            weight=4.0,
+            tooltip_fields=("highway", "capacity", "major_reason"),
+        )
+        major_group.add_to(folium_map)
+
+    if heritage_priority is not None and not heritage_priority.empty:
+        heritage_group = folium.FeatureGroup(name="Car-Light Candidates", show=True)
+        _add_linestrings_to_map(
+            heritage_group,
+            heritage_priority,
+            color_func=lambda _row: "#2f9e44",
+            weight=3.0,
+            tooltip_fields=("highway", "capacity", "distance_to_centre"),
+        )
+        heritage_group.add_to(folium_map)
+
+    if street_directions is not None and not street_directions.empty:
+        _add_directional_layer(
+            folium_map,
+            street_directions,
+            name="Street Directions",
+            color="#4dabf7",
+            show=False,
+        )
 
     palette = list(config.highlight_palette)
     palette_length = len(palette)

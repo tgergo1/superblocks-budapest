@@ -57,6 +57,40 @@ class PipelineConfig:
             "track",
         )
     )
+    major_road_capacity_quantile: float = 0.85
+    major_highway_types: Tuple[str, ...] = field(
+        default_factory=lambda: (
+            "motorway",
+            "motorway_link",
+            "trunk",
+            "trunk_link",
+            "primary",
+            "primary_link",
+        )
+    )
+    major_road_buffer_metres: float = 25.0
+
+    heritage_zone_radius_m: float = 1500.0
+    heritage_capacity_quantile: float = 0.55
+    heritage_priority_highway_types: Tuple[str, ...] = field(
+        default_factory=lambda: (
+            "residential",
+            "living_street",
+            "pedestrian",
+            "service",
+            "unclassified",
+        )
+    )
+    heritage_place_queries: Tuple[str, ...] = field(
+        default_factory=lambda: (
+            "District V, Budapest, Hungary",
+            "District I, Budapest, Hungary",
+            "District VI, Budapest, Hungary",
+            "District VII, Budapest, Hungary",
+        )
+    )
+    heritage_zone_buffer_m: float = 150.0
+    heritage_zone_min_area_m2: float = 25000.0
 
     # Geometry handling
     boundary_buffer_metres: float = 5.0

@@ -22,6 +22,12 @@ def _metric_crs(gdf: GeoDataFrame) -> str | None:
         return "EPSG:3857"
 
 
+def get_metric_crs(gdf: GeoDataFrame) -> str | None:
+    """Expose the internally used metric CRS helper for reuse."""
+
+    return _metric_crs(gdf)
+
+
 def buffer_in_meters(gdf: GeoDataFrame, distance: float) -> GeoDataFrame:
     if distance <= 0 or gdf.empty or gdf.crs is None:
         return gdf.copy()

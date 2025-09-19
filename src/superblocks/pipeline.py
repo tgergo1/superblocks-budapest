@@ -14,7 +14,10 @@ from . import capacity
 from .blocks import build_blocks
 from .config import PipelineConfig
 from .download import download_graph, graph_to_gdfs
-from .streets import classify_streets
+from .heritage import derive_heritage_zone
+from .metrics import compute_metrics, write_markdown, write_metrics
+from .reporting import generate_full_report
+from .streets import classify_streets, detect_major_roads, identify_heritage_priorities
 from .superblocks import assign_blocks_to_superblocks, build_superblocks
 from .visualization import interactive as vis_interactive
 from .visualization import static as vis_static
@@ -29,9 +32,13 @@ class PipelineState:
     edges: gpd.GeoDataFrame | None = None
     boundary_streets: gpd.GeoDataFrame | None = None
     internal_streets: gpd.GeoDataFrame | None = None
+    major_roads: gpd.GeoDataFrame | None = None
+    heritage_priority_streets: gpd.GeoDataFrame | None = None
+    heritage_zone: gpd.GeoDataFrame | None = None
     blocks: gpd.GeoDataFrame | None = None
     superblocks: gpd.GeoDataFrame | None = None
     centre: Tuple[float, float] | None = None
+    metrics: dict | None = None
 
 
 class SuperblockPipeline:
@@ -63,6 +70,32 @@ class SuperblockPipeline:
         logger.info("Using capacity threshold %.2f for boundary streets", threshold)
         self.state.boundary_streets = boundary
         self.state.internal_streets = internal
+        self.detect_priority_layers()
+
+    def detect_priority_layers(self) -> None:
+        edges = self._require_edges(with_capacity=True)
+        centre = self._derive_centre()
+        major = detect_major_roads(edges, self.config)
+        heritage_zone = derive_heritage_zone(edges, self.config, centre)
+        heritage_priority = identify_heritage_priorities(edges, self.config, heritage_zone)
+        self.state.major_roads = major
+        self.state.heritage_priority_streets = heritage_priority
+        self.state.heritage_zone = heritage_zone
+
+    def analyse_metrics(self) -> None:
+        if self.state.edges is None:
+            return
+        metrics = compute_metrics(
+            edges=self.state.edges,
+            boundary=self.state.boundary_streets,
+            internal=self.state.internal_streets,
+            superblocks=self.state.superblocks,
+            heritage_zone=self.state.heritage_zone,
+            heritage_priority=self.state.heritage_priority_streets,
+            major_roads=self.state.major_roads,
+            config=self.config,
+        )
+        self.state.metrics = metrics
 
     def build_blocks(self) -> None:
         internal = self._require_internal_streets()
@@ -71,7 +104,10 @@ class SuperblockPipeline:
 
     def build_superblocks(self) -> None:
         boundary = self._require_boundary_streets()
-        superblocks = build_superblocks(boundary, self.config)
+        exclusions = None
+        if self.state.major_roads is not None and not self.state.major_roads.empty:
+            exclusions = self.state.major_roads
+        superblocks = build_superblocks(boundary, self.config, exclusions=exclusions)
         self.state.superblocks = superblocks
 
     def assign_blocks(self) -> None:
@@ -79,6 +115,7 @@ class SuperblockPipeline:
         superblocks = self._require_superblocks()
         assigned = assign_blocks_to_superblocks(blocks, superblocks)
         self.state.blocks = assigned
+        self.analyse_metrics()
 
     # ------------------------------------------------------------------
     # Visual outputs
@@ -113,6 +150,10 @@ class SuperblockPipeline:
                 output_dir / "budapest_superblocks_map.html",
                 centre=centre,
                 blocks=self.state.blocks,
+                major_roads=self.state.major_roads,
+                heritage_priority=self.state.heritage_priority_streets,
+                heritage_zone=self.state.heritage_zone,
+                street_directions=self.state.major_roads,
             )
 
         if self.state.edges is not None:
@@ -158,6 +199,21 @@ class SuperblockPipeline:
         self.export_maps()
         self.export_geojson()
         self.export_graph()
+        self.export_reports()
+
+    def export_reports(self) -> None:
+        if self.state.metrics is None:
+            logger.warning("Metrics unavailable; skipping analytics export")
+            return
+
+        output_dir = Path(self.config.output_dir)
+        metrics_path = write_metrics(output_dir / "budapest_superblocks_metrics.json", self.state.metrics)
+        report_path = write_markdown(output_dir / "budapest_superblocks_report.md", self.state.metrics)
+        brief_path = generate_full_report(
+            self.state.metrics,
+            output_dir / "budapest_superblocks_brief.md",
+        )
+        logger.info("Saved metrics to %s, %s, and %s", metrics_path, report_path, brief_path)
 
     # ------------------------------------------------------------------
     # Internal helpers
