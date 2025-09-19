@@ -1,50 +1,29 @@
-import sys
-import types
-import os
-sys.path.append('src')
 import geopandas as gpd
 from shapely.geometry import LineString
-import matplotlib.pyplot as plt
 
-# Stub Basemap which is not available in test environment
-basemap_mod = types.ModuleType("mpl_toolkits.basemap")
-class _Basemap:
-    def __init__(self, *args, **kwargs):
-        self.ax = kwargs.get("ax")
-    def plot(self, *args, **kwargs):
-        pass
-basemap_mod.Basemap = _Basemap
-sys.modules.setdefault("mpl_toolkits.basemap", basemap_mod)
+from superblocks.visualization.static import tiled_edge_plot
 
-# Stub pyrosm to avoid heavy dependency
-pyrosm_stub = types.ModuleType("pyrosm")
-class _OSM:
-    def __init__(self, *args, **kwargs):
-        pass
-    def get_network(self, *args, **kwargs):
-        return gpd.GeoDataFrame()
-pyrosm_stub.OSM = _OSM
-pyrosm_stub.get_data = lambda *args, **kwargs: None
-sys.modules["pyrosm"] = pyrosm_stub
 
-# Ensure real matplotlib modules in case other tests inserted stubs
-import importlib
-sys.modules.pop("matplotlib", None)
-sys.modules.pop("matplotlib.pyplot", None)
-sys.modules["matplotlib"] = importlib.import_module("matplotlib")
-sys.modules["matplotlib.pyplot"] = importlib.import_module("matplotlib.pyplot")
-
-import importlib
-import inspect
-
-wireframe_test = importlib.import_module("experiments.wireframe_test")
-RoadNetwork = wireframe_test.RoadNetwork
 def test_num_tiles_creates_image(tmp_path):
-    rn = RoadNetwork("tile_test")
-    rn.edges = gpd.GeoDataFrame(
-        {"geometry": [LineString([(0, 0), (1, 1)])], "color": ["black"]},
-        geometry="geometry",
+    edges = gpd.GeoDataFrame(
+        {
+            "geometry": [
+                LineString([(0, 0), (1, 1)]),
+                LineString([(1, 1), (2, 0)]),
+            ],
+            "color": ["black", "black"],
+        },
+        crs="EPSG:4326",
     )
-    os.chdir(tmp_path)
-    rn.plot(size=(2, 2), dpi=50, num_tiles=2, save=True, ext="png")
-    assert (tmp_path / "tile_test.png").exists()
+
+    output_path = tmp_path / "tile_test.png"
+    tiled_edge_plot(
+        edges,
+        output_path,
+        num_tiles=2,
+        dpi=50,
+        linewidth=0.5,
+        color_column="color",
+    )
+
+    assert output_path.exists()

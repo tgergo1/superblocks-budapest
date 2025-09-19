@@ -4,17 +4,18 @@ This repository contains Python tools to analyse Budapest's street network and g
 
 ## Main workflow
 
-`src/main.py` illustrates the typical steps:
+The refactored toolkit centres around `superblocks.pipeline.SuperblockPipeline` which
+implements the end-to-end workflow:
 
-1. **Download the street network** using OSMnx.
-2. **Estimate road capacity** from lanes and speed limits (Michigan model).
-3. **Classify streets** as boundary or internal based on relative capacity.
-4. **Polygonise internal streets** to create block geometries.
-5. **Assign blocks to superblocks** formed by boundary streets.
-6. **Visualise** streets, blocks and superblocks with Folium.
-7. **Export** the resulting superblocks to GeoJSON and the network to GraphML.
+1. **Download** the OpenStreetMap network for the configured place.
+2. **Enrich** every edge with a normalised capacity score that handles mixed data formats.
+3. **Classify** streets into boundary and internal sets via tunable highway rules and capacity quantiles.
+4. **Polygonise** internal streets into candidate blocks and clean geometries in metric space.
+5. **Construct** superblock polygons from buffered boundary streets and attach blocks to their nearest container.
+6. **Visualise** the results through rich Folium maps and a high-resolution static export with optional tiling.
+7. **Persist** artefacts as GeoJSON, GraphML, and PNG for reporting.
 
-Alternative detection methods are available via `cluster_superblocks()` and `modularity_superblocks()`, which rely on HDBSCAN clustering or community detection to form concave‑hull polygons.
+Alternative detection methods remain available through the `RoadNetwork` wrapper: `cluster_superblocks()` (HDBSCAN) and `modularity_superblocks()` (community detection).
 
 ## High‑resolution map exports
 
@@ -29,15 +30,16 @@ pip install -r requirements.txt
 After installing the dependencies, run
 
 ```bash
-python src/main.py
+python src/main.py --place "Budapest, Hungary" --tiles 4
 ```
 
-Output files are written to the `outputs/` directory:
+Output files are written to the configured `outputs/` directory:
 
 - `budapest_streets.html`
 - `budapest_blocks.html`
 - `budapest_superblocks_map.html`
 - `budapest_superblocks.geojson`
+- `budapest_superblocks.png`
 
 ## Development
 

@@ -1,41 +1,38 @@
-# src/main.py
+"""CLI entry point for computing and visualising Budapest superblocks."""
 
-from road_network import RoadNetwork
+from __future__ import annotations
+
+import argparse
 import logging
 
-def main():
-    # Initialize RoadNetwork for Budapest
-    place_name = 'Budapest, Hungary'
-    network = RoadNetwork(place_name)
+from superblocks.config import PipelineConfig
+from superblocks.pipeline import SuperblockPipeline
 
-    # Step 1: Download Complete Street Network
-    network.download_street_network()
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
-    # Step 2: Classify Streets into Boundary and Internal Streets Based on Capacity
-    network.classify_streets()
 
-    # Step 3: Visualize Streets for Verification
-    network.visualize_streets(output_file='budapest_streets.html')
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Generate Budapest superblocks with rich visualisations.")
+    parser.add_argument("--place", default="Budapest, Hungary", help="Location name recognised by OpenStreetMap")
+    parser.add_argument("--output-dir", default="outputs", help="Directory for exported artefacts")
+    parser.add_argument("--tiles", type=int, default=4, help="Number of tiles for high-res static export")
+    parser.add_argument("--zoom", type=int, default=12, help="Base zoom level for interactive maps")
+    return parser.parse_args()
 
-    # Step 4: Create Block Polygons
-    network.create_block_polygons()
 
-    # Step 5: Visualize Blocks for Verification
-    network.visualize_blocks(output_file='budapest_blocks.html')
+def main() -> None:
+    args = _parse_args()
+    config = PipelineConfig(
+        place_name=args.place,
+        output_dir=args.output_dir,
+    )
+    config.tile_export_num_tiles = max(1, args.tiles)
+    config.folium_zoom_start = args.zoom
 
-    # Step 6: Assign Blocks to Superblocks
-    network.assign_blocks_to_superblocks()
-
-    # Step 7: Visualize Superblocks
-    network.visualize_superblocks(output_file='budapest_superblocks_map.html')
-
-    # Step 8: Save Superblocks to GeoJSON
-    network.save_superblocks_geojson(output_file='budapest_superblocks.geojson')
-
-    # Step 9: Save Street Network Graph
-    network.save_graph(output_file='budapest_street_network.graphml')
-
+    pipeline = SuperblockPipeline(config)
+    pipeline.run_full_pipeline()
     logging.info("Superblock identification process completed successfully.")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
