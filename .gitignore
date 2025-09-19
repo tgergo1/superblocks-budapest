@@ -15,3 +15,5 @@ src/outputs/
 src/outputs/*
 src/cache/
 src/cache/*
+/.venv
+/cache
