@@ -21,3 +21,7 @@ src/cache/*
 /src/superblocks/__pycache__
 /src/superblocks/visualization/__pycache__
 /outputs
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/

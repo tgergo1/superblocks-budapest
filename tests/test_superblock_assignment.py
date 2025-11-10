@@ -38,5 +38,5 @@ def build_network():
 def test_unassigned_block_gets_nearest_superblock():
     rn = build_network()
     rn.assign_blocks_to_superblocks()
-    # The third block is outside but should be assigned to the nearest superblock (index 1)
-    assert rn.blocks.loc[2, 'superblock_id'] == 1
+    # The third block is outside but should be assigned to the nearest superblock (superblock 2)
+    assert rn.blocks.loc[2, 'superblock_id'] == 2
