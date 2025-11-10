@@ -11,7 +11,7 @@ def test_num_tiles_creates_image(tmp_path):
                 LineString([(0, 0), (1, 1)]),
                 LineString([(1, 1), (2, 0)]),
             ],
-            "color": ["black", "black"],
+            "capacity": [1.0, 2.0],
         },
         crs="EPSG:4326",
     )
@@ -23,7 +23,7 @@ def test_num_tiles_creates_image(tmp_path):
         num_tiles=2,
         dpi=50,
         linewidth=0.5,
-        color_column="color",
+        color_column="capacity",
     )
 
     assert output_path.exists()

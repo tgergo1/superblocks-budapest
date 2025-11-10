@@ -11,6 +11,11 @@ import geopandas as gpd
 import networkx as nx
 
 from . import capacity
+from .access_control import (
+    calculate_street_directions,
+    identify_modal_filters,
+    analyze_permeability,
+)
 from .blocks import build_blocks
 from .config import PipelineConfig
 from .download import download_graph, graph_to_gdfs
@@ -32,6 +37,9 @@ class PipelineState:
     edges: gpd.GeoDataFrame | None = None
     boundary_streets: gpd.GeoDataFrame | None = None
     internal_streets: gpd.GeoDataFrame | None = None
+    internal_streets_with_directions: gpd.GeoDataFrame | None = None
+    modal_filters: gpd.GeoDataFrame | None = None
+    permeability_metrics: gpd.GeoDataFrame | None = None
     major_roads: gpd.GeoDataFrame | None = None
     heritage_priority_streets: gpd.GeoDataFrame | None = None
     heritage_zone: gpd.GeoDataFrame | None = None
@@ -117,6 +125,34 @@ class SuperblockPipeline:
         self.state.blocks = assigned
         self.analyse_metrics()
 
+    def calculate_access_control(self) -> None:
+        """Calculate street directions and modal filter placements."""
+        edges = self._require_edges(with_capacity=True)
+        superblocks = self._require_superblocks()
+        boundary = self._require_boundary_streets()
+        internal = self._require_internal_streets()
+        
+        # Calculate optimal street directions
+        internal_with_directions = calculate_street_directions(
+            edges, superblocks, boundary, internal, self.config
+        )
+        self.state.internal_streets_with_directions = internal_with_directions
+        
+        # Identify modal filter locations
+        modal_filters = identify_modal_filters(
+            internal_with_directions, superblocks, self.config
+        )
+        self.state.modal_filters = modal_filters
+        
+        # Analyze permeability
+        permeability = analyze_permeability(
+            internal_with_directions, superblocks, boundary
+        )
+        self.state.permeability_metrics = permeability
+        
+        logger.info("Calculated access control: %d streets with directions, %d modal filters",
+                    len(internal_with_directions), len(modal_filters))
+
     # ------------------------------------------------------------------
     # Visual outputs
     # ------------------------------------------------------------------
@@ -144,6 +180,11 @@ class SuperblockPipeline:
             )
 
         if self.state.superblocks is not None and not self.state.superblocks.empty:
+            # Use internal streets with directions if available
+            street_dirs = self.state.internal_streets_with_directions
+            if street_dirs is None or street_dirs.empty:
+                street_dirs = self.state.internal_streets
+            
             vis_interactive.render_superblocks_map(
                 self.state.superblocks,
                 self.config,
@@ -153,7 +194,8 @@ class SuperblockPipeline:
                 major_roads=self.state.major_roads,
                 heritage_priority=self.state.heritage_priority_streets,
                 heritage_zone=self.state.heritage_zone,
-                street_directions=self.state.major_roads,
+                street_directions=street_dirs,
+                modal_filters=self.state.modal_filters,
             )
 
         if self.state.edges is not None:
@@ -185,6 +227,29 @@ class SuperblockPipeline:
         logger.info("Saved street network GraphML to %s", path)
         return path
 
+    def export_access_control(self) -> None:
+        """Export access control data (street directions and modal filters)."""
+        output_dir = Path(self.config.output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Export streets with directions
+        if self.state.internal_streets_with_directions is not None:
+            streets_path = output_dir / "budapest_street_directions.geojson"
+            self.state.internal_streets_with_directions.to_file(streets_path, driver="GeoJSON")
+            logger.info("Saved street directions to %s", streets_path)
+        
+        # Export modal filters
+        if self.state.modal_filters is not None and not self.state.modal_filters.empty:
+            filters_path = output_dir / "budapest_modal_filters.geojson"
+            self.state.modal_filters.to_file(filters_path, driver="GeoJSON")
+            logger.info("Saved modal filters to %s", filters_path)
+        
+        # Export permeability metrics
+        if self.state.permeability_metrics is not None:
+            metrics_path = output_dir / "budapest_permeability_metrics.json"
+            self.state.permeability_metrics.to_json(metrics_path, orient="records", indent=2)
+            logger.info("Saved permeability metrics to %s", metrics_path)
+
     # ------------------------------------------------------------------
     # Convenience orchestration
     # ------------------------------------------------------------------
@@ -196,9 +261,11 @@ class SuperblockPipeline:
         self.build_blocks()
         self.build_superblocks()
         self.assign_blocks()
+        self.calculate_access_control()
         self.export_maps()
         self.export_geojson()
         self.export_graph()
+        self.export_access_control()
         self.export_reports()
 
     def export_reports(self) -> None:
