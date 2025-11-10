@@ -25,3 +25,7 @@ __pycache__/
 *.pyc
 *.pyo
 .pytest_cache/
+/.venv-3.11
+/src/superblocks/__pycache__
+/src/superblocks/visualization/__pycache__
+/src/superblocks/__pycache__

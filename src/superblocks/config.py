@@ -122,6 +122,10 @@ class PipelineConfig:
     internal_street_color: str = "#ADB5BD"
     internal_street_weight: float = 1.0
     boundary_street_weight: float = 2.5
+    map_line_simplify_tolerance_m: float = 3.0
+    map_polygon_simplify_tolerance_m: float = 5.0
+    access_control_simplify_tolerance_m: float = 20.0
+    map_coordinate_precision: int = 5
 
     # Static tiling exports
     tile_export_num_tiles: int = 1

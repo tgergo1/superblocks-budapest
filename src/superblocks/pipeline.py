@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+import json
 from pathlib import Path
 from typing import Tuple
 
 import geopandas as gpd
 import networkx as nx
+import numpy as np
 
 from . import capacity
 from .access_control import (
@@ -47,6 +49,34 @@ class PipelineState:
     superblocks: gpd.GeoDataFrame | None = None
     centre: Tuple[float, float] | None = None
     metrics: dict | None = None
+
+
+def _needs_serialisation(value) -> bool:
+    return isinstance(value, (list, tuple, set, dict, np.ndarray))
+
+
+def _serialise_property_value(value):
+    if isinstance(value, dict):
+        return json.dumps(value, ensure_ascii=False)
+    if isinstance(value, (list, tuple, set)):
+        return ", ".join(str(v) for v in value)
+    if isinstance(value, np.ndarray):
+        return ", ".join(str(v) for v in value.tolist())
+    return value
+
+
+def _geojson_ready_gdf(gdf: gpd.GeoDataFrame | None) -> gpd.GeoDataFrame | None:
+    if gdf is None:
+        return None
+    safe = gdf.copy()
+    geometry_col = safe.geometry.name
+    for column in safe.columns:
+        if column == geometry_col:
+            continue
+        series = safe[column]
+        if series.apply(_needs_serialisation).any():
+            safe[column] = series.apply(_serialise_property_value)
+    return safe
 
 
 class SuperblockPipeline:
@@ -209,7 +239,7 @@ class SuperblockPipeline:
             )
 
     def export_geojson(self, output_file: str = "budapest_superblocks.geojson") -> Path:
-        superblocks = self._require_superblocks()
+        superblocks = _geojson_ready_gdf(self._require_superblocks())
         path = Path(self.config.output_dir) / output_file
         path.parent.mkdir(parents=True, exist_ok=True)
         superblocks.to_file(path, driver="GeoJSON")
@@ -235,13 +265,15 @@ class SuperblockPipeline:
         # Export streets with directions
         if self.state.internal_streets_with_directions is not None:
             streets_path = output_dir / "budapest_street_directions.geojson"
-            self.state.internal_streets_with_directions.to_file(streets_path, driver="GeoJSON")
+            streets = _geojson_ready_gdf(self.state.internal_streets_with_directions)
+            streets.to_file(streets_path, driver="GeoJSON")
             logger.info("Saved street directions to %s", streets_path)
         
         # Export modal filters
         if self.state.modal_filters is not None and not self.state.modal_filters.empty:
             filters_path = output_dir / "budapest_modal_filters.geojson"
-            self.state.modal_filters.to_file(filters_path, driver="GeoJSON")
+            filters = _geojson_ready_gdf(self.state.modal_filters)
+            filters.to_file(filters_path, driver="GeoJSON")
             logger.info("Saved modal filters to %s", filters_path)
         
         # Export permeability metrics
