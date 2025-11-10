@@ -221,6 +221,7 @@ def render_superblocks_map(
     heritage_priority: gpd.GeoDataFrame | None = None,
     heritage_zone: gpd.GeoDataFrame | None = None,
     street_directions: gpd.GeoDataFrame | None = None,
+    modal_filters: gpd.GeoDataFrame | None = None,
 ) -> Path:
     if superblocks.empty:
         raise ValueError("Cannot render superblock map without superblock polygons")
@@ -306,8 +307,28 @@ def render_superblocks_map(
             street_directions,
             name="Street Directions",
             color="#4dabf7",
-            show=False,
+            show=True,
         )
+
+    # Add modal filters layer
+    if modal_filters is not None and not modal_filters.empty:
+        filters_group = folium.FeatureGroup(name="Modal Filters", show=True)
+        for _, filter_row in modal_filters.iterrows():
+            folium.CircleMarker(
+                location=[filter_row.geometry.y, filter_row.geometry.x],
+                radius=8,
+                color="#e03131",
+                fill=True,
+                fillColor="#e03131",
+                fillOpacity=0.8,
+                weight=2,
+                tooltip=folium.Tooltip(
+                    f"Modal Filter<br>"
+                    f"Street: {filter_row.get('street_name', 'Unknown')}<br>"
+                    f"Reason: {filter_row.get('reason', 'N/A')}"
+                ),
+            ).add_to(filters_group)
+        filters_group.add_to(folium_map)
 
     palette = list(config.highlight_palette)
     palette_length = len(palette)
