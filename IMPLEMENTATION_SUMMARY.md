@@ -1,3 +1,5 @@
+> **⚠️ This repository has been archived. Development continues at [Superblocker](https://github.com/tgergo1/Superblocker).**
+
 # Implementation Summary: Complete Superblock Decision Tool
 
 ## Overview
