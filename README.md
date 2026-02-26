@@ -6,8 +6,6 @@
 
 # Superblocks for Budapest
 
-> **Note:** This repository is archived. Please visit [https://github.com/tgergo1/Superblocker](https://github.com/tgergo1/Superblocker) for the latest version.
-
 This repository contains Python tools to analyse Budapest's street network and generate **superblocks** – clusters of city blocks bounded by high‑capacity roads. The code relies on OpenStreetMap data and provides interactive maps and GeoJSON outputs for further exploration.
 
 ## Key Features
